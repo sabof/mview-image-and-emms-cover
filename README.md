@@ -13,15 +13,15 @@ Cover is derived from this mode. It is mostly of interest to elisp programmers.
 Put both files somewhere in your load-path, add `(require 'emms-cover)` somewhere
 in your .emacs, and do `M-x emms-cover-show`.
 
-<h3>Possible improvments (That I'm currently too lazy to implement, but you might not be)</h3>
+<h3>Possible improvements (That I'm currently too lazy to implement, but you might not be)</h3>
 <h4>MView Image</h4>
 
-* Improve the caching mechanism. It's currently in a rather lame, slightly
-better than nothing state. Possibly add a buffer-local switch to turn caching on
-and off.
+* Improve the caching mechanism. Now it's in a rather lame, slightly better than
+nothing state.
+* Add a buffer-local switch to turn caching on and off.
 
 <h4>EMMS Cover</h4>
 
-* Find/make a nicely licenced image for missing covers. Currently you need to
-find your own and set the emms-cover-nocover-image variable.
-* Overlay a pause sign on top of the cover when the player is paused.
+* Find/make a nicely licensed image for missing covers. At the moment you need to
+find your own, and set the `emms-cover-nocover-image` variable.
+* Overlay a pause sign on top of the cover when the player is paused. Cache it, so the switch is instantaneous.
