@@ -27,7 +27,15 @@
 
 ;;; Code:
 
+(eval-when-compile (require 'cl))
 (require 'mview-image)
+
+(defun emms-cover-buffers-with-mode (mode)
+  (remove-if-not
+   (lambda (buf)
+     (with-current-buffer buf
+       (eq major-mode mode)))
+   (buffer-list)))
 
 (defun* emms-cover-path ()
   (unless emms-player-playing-p
@@ -49,7 +57,7 @@
 
 (defun* emms-cover-refresh (&rest ignore)
   (let* (( cover-buffer
-           (or (first (buffers-with-mode 'emms-cover-mode))
+           (or (first (emms-cover-buffers-with-mode 'emms-cover-mode))
                (return-from emms-cover-refresh)))
          ( cover-path
            (or (emms-cover-path)
