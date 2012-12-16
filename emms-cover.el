@@ -81,7 +81,7 @@ mview-image."
   (interactive)
   (pop-to-buffer "*EMMS Cover*")
   (emms-cover-mode)
-  (emms-cover-referesh))
+  (emms-cover-refresh))
 
 (provide 'emms-cover)
 
