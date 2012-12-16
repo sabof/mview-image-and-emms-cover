@@ -4,6 +4,8 @@
 
 ;;; Code:
 
+(require 'mview-image)
+
 (defun* emms-cover-path ()
   (unless emms-player-playing-p
     (return-from emms-cover-path))
@@ -50,7 +52,6 @@ mview-image."
   (emms-cover-mode)
   (emms-cover-referesh))
 
-(provide 'emms-cover)
 (provide 'emms-cover)
 
 ;;; emms-cover.el ends here
