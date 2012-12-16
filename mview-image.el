@@ -246,7 +246,7 @@
     (mvi-with-window-or-buffer window-or-buffer
       (setq mvi-current-image-file image)
       (setq default-directory (file-name-directory image))
-      (mvi-center-insert-image image 1 'use-cache))))
+      (mvi-center-insert-image image 1))))
 
 (defun* mview-image-clear (&optional window-or-buffer)
   (mvi-with-window-or-buffer window-or-buffer
