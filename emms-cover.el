@@ -30,6 +30,8 @@
 (eval-when-compile (require 'cl))
 (require 'mview-image)
 
+(defvar emms-cover-nocover-image nil)
+
 (defun emms-cover-buffers-with-mode (mode)
   (remove-if-not
    (lambda (buf)
@@ -53,7 +55,7 @@
                   (mapcar
                    'extension-to-regex
                    image-extensions))))
-         (mmake-path "default-cover.png")))))
+         emms-cover-nocover-image))))
 
 (defun* emms-cover-refresh (&rest ignore)
   (let* (( cover-buffer
