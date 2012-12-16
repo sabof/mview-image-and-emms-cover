@@ -50,11 +50,12 @@
                  folder t "folder\\..\\{2,4\\}$"))
          (first (directory-files
                  folder t
-                 (s-join
-                  "\\|"
+                 (mapconcat
+                  'identity
                   (mapcar
                    'extension-to-regex
-                   image-extensions))))
+                   image-extensions)
+                  "\\|")))
          emms-cover-nocover-image))))
 
 (defun* emms-cover-refresh (&rest ignore)

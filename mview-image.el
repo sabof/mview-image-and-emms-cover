@@ -299,7 +299,7 @@ Requires ImageMagick."
 
 (defun mview-image-pop-to-image (filename)
   "Pop to a new buffer showing the image at FILENAME."
-  (interactive (list (read-file-name "Open image:")))
+  (interactive (list (read-file-name "Open image: ")))
   (pop-to-buffer (generate-new-buffer "MView Image"))
   (mview-image-mode)
   (mview-image-set-image filename))
