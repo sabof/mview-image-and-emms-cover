@@ -108,33 +108,37 @@
         nconcing (with-selected-frame frame
                    (window-list))))
 
-(defun* mvi-fit-image (image-loc &optional width height)
-  "Should be renamed/split into mvi-fit-image and mvi-fit-image to window"
+(defun mvi-writable-window-dimensions ()
+  (let (( margin 2)
+        ( char-dim (mvi-character-dimensions)))
+    (list (- (* (first char-dim)
+                (window-width))
+             margin)
+          (- (* (second char-dim)
+                (- (window-height)
+                   (if header-line-format
+                       1 0)
+                   (if mode-line-format
+                       1 0)))
+             margin))))
+
+(defun* mvi-fit-image (image-loc width height)
   (assert (file-exists-p image-loc))
   (let* (( file (make-temp-file "emacs-image" nil ".png"))
-         ( dimensions (mvi-writable-window-dimensions))
-         ( command (progn
-                     (when width
-                       (setf (first dimensions)
-                             width))
-                     (when height
-                       (setf (second dimensions)
-                             height))
-                     (format "convert %s -resize %sx%s\\> %s"
-                             (shell-quote-argument image-loc)
-                             (first dimensions)
-                             (second dimensions)
-                             file))))
+         ( command (format "convert %s -resize %sx%s\\> %s"
+                           (shell-quote-argument image-loc)
+                           width
+                           height
+                           file)))
     (mvi-silence-messages
      (shell-command command))
     file))
 
 (defun mvi-fit-image-caching (image-loc width height)
-  (let (( hash-val (gethash
-                    (list image-loc width height)
-                    mvi-fit-image-caching-hash)))
+  (let (( hash-val (gethash (list image-loc width height)
+                            mvi-fit-image-caching-hash)))
     (when (and hash-val (file-exists-p hash-val))
-      (return-from mvi-fit-image hash-val)))
+      (return-from mvi-fit-image-caching hash-val)))
   (puthash (list image-loc width height)
            (mvi-fit-image image-loc width height)
            mvi-fit-image-caching-hash))
@@ -160,20 +164,6 @@
   (let ((window-dimensions (mvi-window-pixel-dimensions)))
     (list (/ (first window-dimensions) (window-width))
           (/ (second window-dimensions) (window-height)))))
-
-(defun mvi-writable-window-dimensions ()
-  (let (( margin 2)
-        ( char-dim (mvi-character-dimensions)))
-    (list (- (* (first char-dim)
-                (window-width))
-             margin)
-          (- (* (second char-dim)
-                (- (window-height)
-                   (if header-line-format
-                       1 0)
-                   (if mode-line-format
-                       1 0)))
-             margin))))
 
 (defun mvi-image-dimensions (source)
   (assert (file-exists-p source))
@@ -290,6 +280,7 @@ Requires ImageMagick."
     [remap smooth-scroll-down] 'ignore
     [remap cua-scroll-up] 'ignore
     [remap cua-scroll-down] 'ignore
+    ;; Ideally you'd never need to use this.
     (kbd "g") 'revert-buffer)
   (setq cursor-type nil
         buffer-read-only t
