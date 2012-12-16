@@ -54,8 +54,8 @@
 ;; -----------------------------------------------------------------------------
 
 (defmacro mvi-with-window-or-buffer (window-or-buffer &rest rest)
-  (let ((win-sym (gensym "win-"))
-        (buf-sym (gensym "buf-")))
+  (let (( win-sym (gensym "win-"))
+        ( buf-sym (gensym "buf-")))
     `(let (( ,win-sym (cond ( (windowp ,window-or-buffer)
                               ,window-or-buffer)
                             ( (bufferp ,window-or-buffer)
@@ -75,6 +75,10 @@
 (put 'mvi-with-window-or-buffer 'common-lisp-indent-function
      '(2 &body))
 
+(defmacro mvi-silence-messages (&rest body)
+  `(flet ((message (&rest ignore)))
+     ,@body))
+
 ;; -----------------------------------------------------------------------------
 ;; FUNCTIONS
 ;; -----------------------------------------------------------------------------
@@ -91,10 +95,6 @@
     (define-key keymap (pop bindings) (pop bindings))))
 (put 'mvi-define-keys 'common-lisp-indent-function
      '(4 &body))
-
-(defmacro mvi-silence-messages (&rest body)
-  `(flet ((message (&rest ignore)))
-     ,@body))
 
 (defun mvi-windows-with-buffer (buffer)
   (remove-if-not
@@ -160,11 +160,6 @@
     (list (/ (first window-dimensions) (window-width))
           (/ (second window-dimensions) (window-height)))))
 
-(defun mvi-window-characters-dimensions ()
-  (let ((window-dimensions (mvi-window-pixel-dimensions)))
-    (list (/ (first window-dimensions) (window-width))
-          (/ (second window-dimensions) (window-height)))))
-
 (defun mvi-image-dimensions (source)
   (assert (file-exists-p source))
   (flet (( message (&rest ignore)))
@@ -183,7 +178,7 @@
      use-cache)
   (setq image (expand-file-name image))
   (assert (file-exists-p image))
-  (let* (( char-dim (mvi-window-characters-dimensions))
+  (let* (( char-dim (mvi-character-dimensions))
          ( win-dim (mvi-writable-window-dimensions))
          ( max-dim
            (mapcar* (lambda (win char) (- win (* 2 margin-in-chars char)))

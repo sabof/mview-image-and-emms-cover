@@ -69,7 +69,7 @@
     (mview-image-set-image cover-path cover-buffer)))
 
 (define-derived-mode emms-cover-mode mview-image-mode
-  "Emms Cover Mode"
+  "EMMS Cover Mode"
   "Dispay the cover of the currently playing album in EMMS. Based on
 mview-image."
   (add-hook 'emms-player-finished-hook 'emms-cover-refresh)

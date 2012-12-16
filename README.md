@@ -8,10 +8,16 @@ MView Image is a simplistic image viewer, based on ImageMagick that shows an
 image scaled to fit and centered. It will adjust if the window is resized. EMMS
 Cover is derived from this mode. It is mostly of interest to elisp programmers.
 
-<h3>EMMS Cover installation and usage</h3>
+<h3>Installation and usage</h3>
+<h4>EMMS Cover</h4>
 
 Put both files somewhere in your load-path, add `(require 'emms-cover)` somewhere
 in your .emacs, and do `M-x emms-cover-show`.
+
+<h4>MView Image</h4>
+
+Currently provides a single interactive command `mview-image-pop-to-image`,
+which asks for a file name and opens it in a MView Image buffer.
 
 <h3>Possible improvements (That I'm currently too lazy to implement, but you might not be)</h3>
 <h4>MView Image</h4>
