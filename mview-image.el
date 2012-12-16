@@ -140,7 +140,7 @@
      (shell-command command))
     file))
 
-(defun mvi-fit-image-caching (image-loc width height)
+(defun* mvi-fit-image-caching (image-loc width height)
   (let (( hash-val (gethash (list image-loc width height)
                             mvi-fit-image-caching-hash)))
     (when (and hash-val (file-exists-p hash-val))
@@ -196,8 +196,8 @@
                     char-dim))
          ( image-fitted
            (funcall (if use-cache
-                        'mvi-fit-image
-                        'mvi-fit-image-caching)
+                        'mvi-fit-image-caching
+                        'mvi-fit-image)
                     image
                     (first max-dim)
                     (second max-dim)))
