@@ -1,3 +1,10 @@
+;;; mview-image.el --- Fit and center an image in an emacs buffer. Responsive to window resizing. Requires ImageMagick.
+
+;;; Commentary:
+;;
+
+;;; Code:
+
 (eval-when-compile (require 'cl))
 
 (defvar mvi-fit-image-caching-hash
@@ -256,10 +263,12 @@ Requires ImageMagick."
         indicate-empty-lines nil))
 
 (defun mview-image-pop-to-image (filename)
-  "Pop to a new buffer showing the image at filename."
+  "Pop to a new buffer showing the image at FILENAME."
   (interactive (list (read-file-name "Open image:")))
   (pop-to-buffer (generate-new-buffer "MView Image"))
   (mview-image-mode)
   (mview-image-set-image filename))
 
 (provide 'mview-image)
+
+;;; mview-image.el ends here

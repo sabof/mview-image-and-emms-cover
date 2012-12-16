@@ -1,3 +1,9 @@
+;;; emms-cover.el --- Dispay the cover of the currently playing album in EMMS. Based on mview-image.
+;;; Commentary:
+;;
+
+;;; Code:
+
 (defun* emms-cover-path ()
   (unless emms-player-playing-p
     (return-from emms-cover-path))
@@ -45,3 +51,6 @@ mview-image."
   (emms-cover-referesh))
 
 (provide 'emms-cover)
+(provide 'emms-cover)
+
+;;; emms-cover.el ends here
