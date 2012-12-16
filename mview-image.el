@@ -29,6 +29,10 @@
 
 (eval-when-compile (require 'cl))
 
+;; -----------------------------------------------------------------------------
+;; GLOBAL VARS
+;; -----------------------------------------------------------------------------
+
 (defvar mvi-fit-image-caching-hash
   (make-hash-table
    :test 'equal))
@@ -45,7 +49,35 @@
 (defvar mvi-last-image nil)
 (make-variable-buffer-local 'mvi-last-image)
 
-;; ----------------------------------------------------------------------------
+;; -----------------------------------------------------------------------------
+;; MACROS
+;; -----------------------------------------------------------------------------
+
+(defmacro mvi-with-window-or-buffer (window-or-buffer &rest rest)
+  (let ((win-sym (gensym "win-"))
+        (buf-sym (gensym "buf-")))
+    `(let (( ,win-sym (cond ( (windowp ,window-or-buffer)
+                              ,window-or-buffer)
+                            ( (bufferp ,window-or-buffer)
+                              (first (mvi-windows-with-buffer ,window-or-buffer)))
+                            ( t (selected-window))))
+           ( ,buf-sym (cond ( (windowp ,window-or-buffer)
+                              (window-buffer ,window-or-buffer))
+                            ( (bufferp ,window-or-buffer)
+                              ,window-or-buffer)
+                            ( t (current-buffer)))))
+       (when (and (windowp ,win-sym)
+                  (bufferp ,buf-sym)
+                  (mvi-buffer-p ,buf-sym))
+         (with-selected-window ,win-sym
+           (with-current-buffer ,buf-sym
+             ,@rest))))))
+(put 'mvi-with-window-or-buffer 'common-lisp-indent-function
+     '(2 &body))
+
+;; -----------------------------------------------------------------------------
+;; FUNCTIONS
+;; -----------------------------------------------------------------------------
 
 (defun* mvi-buffer-p (&optional (buf (current-buffer)))
   ;; Maybe check active keymaps instead?
@@ -71,34 +103,10 @@
    (loop for frame in (frame-list)
          append (window-list frame))))
 
-(defmacro mvi-with-window-or-buffer (window-or-buffer &rest rest)
-  (let ((win-sym (gensym "win-"))
-        (buf-sym (gensym "buf-")))
-    `(let (( ,win-sym (cond ( (windowp ,window-or-buffer)
-                              ,window-or-buffer)
-                            ( (bufferp ,window-or-buffer)
-                              (first (mvi-windows-with-buffer ,window-or-buffer)))
-                            ( t (selected-window))))
-           ( ,buf-sym (cond ( (windowp ,window-or-buffer)
-                              (window-buffer ,window-or-buffer))
-                            ( (bufferp ,window-or-buffer)
-                              ,window-or-buffer)
-                            ( t (current-buffer)))))
-       (when (and (windowp ,win-sym)
-                  (bufferp ,buf-sym)
-                  (mvi-buffer-p ,buf-sym))
-         (with-selected-window ,win-sym
-           (with-current-buffer ,buf-sym
-             ,@rest))))))
-(put 'mvi-with-window-or-buffer 'common-lisp-indent-function
-     '(2 &body))
-
-
 (defun mvi-full-window-list ()
   (loop for frame in (remove terminal-frame (frame-list))
         nconcing (with-selected-frame frame
                    (window-list))))
-
 
 (defun* mvi-fit-image (image-loc &optional width height)
   "Should be renamed/split into mvi-fit-image and mvi-fit-image to window"
@@ -232,6 +240,10 @@
       (cancel-timer mvi-resize-timer))
     (setq mvi-resize-timer
           (run-with-timer 1 nil 'mvi-refresh-all))))
+
+;; -----------------------------------------------------------------------------
+;; INTERFACE
+;; -----------------------------------------------------------------------------
 
 (defun* mview-image-set-image (image &optional window-or-buffer)
   (assert (file-exists-p image))
