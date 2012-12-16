@@ -49,6 +49,9 @@
 (defvar mvi-last-image nil)
 (make-variable-buffer-local 'mvi-last-image)
 
+(defvar mvi-buffer-tmp-file nil)
+(make-variable-buffer-local 'mvi-last-image)
+
 ;; -----------------------------------------------------------------------------
 ;; MACROS
 ;; -----------------------------------------------------------------------------
@@ -124,7 +127,10 @@
 
 (defun* mvi-fit-image (image-loc width height)
   (assert (file-exists-p image-loc))
-  (let* (( file (make-temp-file "emacs-image" nil ".png"))
+  (let* (( file
+           (or mvi-buffer-tmp-file
+               (setq mvi-buffer-tmp-file
+                     (make-temp-file "emacs-image" nil ".png"))))
          ( command (format "convert %s -resize %sx%s\\> %s"
                            (shell-quote-argument image-loc)
                            width
@@ -143,33 +149,37 @@
            (mvi-fit-image image-loc width height)
            mvi-fit-image-caching-hash))
 
+(defun mvi-clear-cache ()
+  (setq mvi-fit-image-caching-hash
+        (make-hash-table
+         :test 'equal)))
+
 (defun mvi-buffers ()
   (remove-if-not 'mvi-buffer-p (buffer-list)))
 
 (defun mvi-window-pixel-dimensions ()
   (let ((pixel-edges (window-pixel-edges)))
     (list (- (third pixel-edges)
-             (first pixel-edges)
-             )
+             (first pixel-edges))
           (- (fourth pixel-edges)
-             (second pixel-edges)
-             ))))
+             (second pixel-edges)))))
 
 (defun mvi-character-dimensions ()
-  (let ((window-dimensions (mvi-window-pixel-dimensions)))
+  (let (( window-dimensions (mvi-window-pixel-dimensions)))
     (list (/ (first window-dimensions) (window-width))
           (/ (second window-dimensions) (window-height)))))
 
-(defun mvi-image-dimensions (source)
+(defun mvi-image-dimensions (source &optional dont-recurse)
   (assert (file-exists-p source))
-  (flet (( message (&rest ignore)))
-    (let* ((command (concat "identify " (shell-quote-argument source)))
-           (command-result (substring (shell-command-to-string command)
-                                      (length source))))
-      (save-match-data
-        (string-match "\\([0-9]+\\)x\\([0-9]+\\)" command-result)
-        (list (string-to-int (match-string 1 command-result))
-              (string-to-int (match-string 2 command-result)))))))
+  (let* (( command (concat "identify " (shell-quote-argument source)))
+         ( command-result
+           (substring (mvi-silence-messages
+                       (shell-command-to-string command))
+                      (length source))))
+    (save-match-data
+      (string-match "\\([0-9]+\\)x\\([0-9]+\\)" command-result)
+      (list (string-to-int (match-string 1 command-result))
+            (string-to-int (match-string 2 command-result))))))
 
 (defun* mvi-center-insert-image
     (image
@@ -251,6 +261,11 @@
       (mview-image-set-image
        mvi-current-image-file
        window-or-buffer))))
+
+(defun mview-image-refresh-hard (&optional window-or-buffer)
+  (interactive)
+  (mvi-clear-cache)
+  (mview-image-refresh window-or-buffer))
 
 (define-derived-mode mview-image-mode fundamental-mode
   "MView Image Mode"
