@@ -14,11 +14,11 @@ Put both files somewhere in your load-path, add `(require 'emms-cover)` somewher
 in your .emacs and do `M-x emms-cover-show`.
 
 <h3>Possible improvments (That I'm currently to lazy to implement, but you might not be)</h3>
-<h2>MView Image</h2>
+<h4>MView Image</h4>
 
 * Improve the caching mechanism. Possibly add a buffer-local switch.
 
-<h2>EMMS Cover</h2>
+<h4>EMMS Cover</h4>
 
 * Find a nicely licenced image for missing covers. currently you have need to
 find your own and set the emms-cover-nocover-image variable.
