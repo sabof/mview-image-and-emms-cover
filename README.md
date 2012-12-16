@@ -10,5 +10,5 @@ Cover is derived from this mode. It is mostly of interest to elisp programmers.
 
 <h3>EMMS Cover installation and usage</h3>
 
-Put both files somewhere in your load-path. Add (require 'emms-cover) somewhere
-in your .emacs. Then do M-x emms-cover-show.
+Put both files somewhere in your load-path, add `(require 'emms-cover)` somewhere
+in your .emacs and do `M-x emms-cover-show`.
