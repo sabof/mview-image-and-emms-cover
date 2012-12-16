@@ -13,7 +13,7 @@ Cover is derived from this mode. It is mostly of interest to elisp programmers.
 Put both files somewhere in your load-path, add `(require 'emms-cover)` somewhere
 in your .emacs and do `M-x emms-cover-show`.
 
-<h3>Possible improvments (That I'm currently to lazy to implement, but you might not be)</h3>
+<h3>Possible improvments (That I'm currently too lazy to implement, but you might not be)</h3>
 <h4>MView Image</h4>
 
 * Improve the caching mechanism. Possibly add a buffer-local switch.
