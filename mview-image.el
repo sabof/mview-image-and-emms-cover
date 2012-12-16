@@ -50,7 +50,7 @@
 (make-variable-buffer-local 'mvi-last-image)
 
 (defvar mvi-buffer-tmp-file nil)
-(make-variable-buffer-local 'mvi-last-image)
+(make-variable-buffer-local 'mvi-buffer-tmp-file)
 
 ;; -----------------------------------------------------------------------------
 ;; MACROS
