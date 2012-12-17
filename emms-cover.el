@@ -79,10 +79,19 @@ mview-image."
   (add-hook 'emms-player-stopped-hook 'emms-cover-refresh)
   (setq revert-buffer-function 'emms-cover-refresh))
 
-(defun emms-cover-show ()
+(defun emms-cover-pop-to ()
   "Show the emms-cover buffer."
   (interactive)
   (pop-to-buffer "*EMMS Cover*")
+  (emms-cover-mode)
+  (emms-cover-refresh))
+
+(defalias 'emms-cover-show 'emms-cover-pop-to)
+
+(defun emms-cover-switch-to ()
+  "Show the emms-cover buffer."
+  (interactive)
+  (switch-to-buffer "*EMMS Cover*")
   (emms-cover-mode)
   (emms-cover-refresh))
 

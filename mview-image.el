@@ -31,10 +31,6 @@
 
 ;; GLOBAL VARS
 
-(defvar mvi-fit-image-caching-hash
-  (make-hash-table
-   :test 'equal))
-
 (defvar mvi-current-image-file nil)
 (make-variable-buffer-local 'mvi-current-image-file)
 
@@ -55,19 +51,21 @@
 (defmacro mvi-with-window-or-buffer (window-or-buffer &rest rest)
   (let (( win-sym (gensym "win-"))
         ( buf-sym (gensym "buf-")))
-    `(let (( ,win-sym (cond ( (windowp ,window-or-buffer)
-                              ,window-or-buffer)
-                            ( (bufferp ,window-or-buffer)
-                              (first (mvi-windows-with-buffer ,window-or-buffer)))
-                            ( t (selected-window))))
-           ( ,buf-sym (cond ( (windowp ,window-or-buffer)
-                              (window-buffer ,window-or-buffer))
-                            ( (bufferp ,window-or-buffer)
-                              ,window-or-buffer)
-                            ( t (current-buffer)))))
+    `(let (( ,win-sym
+             (cond ( (windowp ,window-or-buffer)
+                     ,window-or-buffer)
+                   ( (bufferp ,window-or-buffer)
+                     (first (mvi-windows-with-buffer ,window-or-buffer)))
+                   ( t (selected-window))))
+           ( ,buf-sym
+             (cond ( (windowp ,window-or-buffer)
+                     (window-buffer ,window-or-buffer))
+                   ( (bufferp ,window-or-buffer)
+                     ,window-or-buffer)
+                   ( t (current-buffer)))))
        (when (and (windowp ,win-sym)
                   (bufferp ,buf-sym)
-                  (mvi-buffer-p ,buf-sym))
+                  (mvi-mvi-buffer-p ,buf-sym))
          (with-selected-window ,win-sym
            (with-current-buffer ,buf-sym
              ,@rest))))))
@@ -80,12 +78,12 @@
 
 ;; FUNCTIONS
 
-(defun* mvi-buffer-p (&optional (buf (current-buffer)))
+(defun* mvi-mvi-buffer-p (&optional (buf (current-buffer)))
   ;; Maybe check active keymaps instead?
   (with-current-buffer buf mvi-is-mvi-buffer))
 
-(defun* mvi-window-p (&optional (win (selected-window)))
-  (mvi-buffer-p (window-buffer win)))
+(defun* mvi-mvi-window-p (&optional (win (selected-window)))
+  (mvi-mvi-buffer-p (window-buffer win)))
 
 (defun* mvi-define-keys (keymap &rest bindings)
   (while bindings
@@ -105,18 +103,20 @@
         nconcing (with-selected-frame frame
                    (window-list))))
 
-(defun mvi-writable-window-dimensions ()
+(defun* mvi-buffer-has-window-p (buf)
+  (some (lambda (win)
+          (eq (window-buffer win) buf))
+        (mvi-full-window-list)))
+
+(defun mvi-main-area-dimensions ()
   (let (( margin 2)
         ( char-dim (mvi-character-dimensions)))
-    (list (- (* (first char-dim)
-                (window-width))
+    (list (- (* (first char-dim) (window-width))
              margin)
           (- (* (second char-dim)
                 (- (window-height)
-                   (if header-line-format
-                       1 0)
-                   (if mode-line-format
-                       1 0)))
+                   (if header-line-format 1 0)
+                   (if mode-line-format 1 0)))
              margin))))
 
 (defun* mvi-fit-image (image-loc width height)
@@ -134,32 +134,16 @@
      (shell-command command))
     file))
 
-(defun* mvi-fit-image-caching (image-loc width height)
-  (let (( hash-val (gethash (list image-loc width height)
-                            mvi-fit-image-caching-hash)))
-    (when (and hash-val (file-exists-p hash-val))
-      (return-from mvi-fit-image-caching hash-val)))
-  (puthash (list image-loc width height)
-           (mvi-fit-image image-loc width height)
-           mvi-fit-image-caching-hash))
-
-(defun mvi-clear-cache ()
-  (setq mvi-fit-image-caching-hash
-        (make-hash-table
-         :test 'equal)))
-
 (defun mvi-buffers ()
-  (remove-if-not 'mvi-buffer-p (buffer-list)))
+  (remove-if-not 'mvi-mvi-buffer-p (buffer-list)))
 
-(defun mvi-window-pixel-dimensions ()
+(defun mvi-mvi-window-pixel-dimensions ()
   (let ((pixel-edges (window-pixel-edges)))
-    (list (- (third pixel-edges)
-             (first pixel-edges))
-          (- (fourth pixel-edges)
-             (second pixel-edges)))))
+    (list (- (third pixel-edges) (first pixel-edges))
+          (- (fourth pixel-edges) (second pixel-edges)))))
 
 (defun mvi-character-dimensions ()
-  (let (( window-dimensions (mvi-window-pixel-dimensions)))
+  (let (( window-dimensions (mvi-mvi-window-pixel-dimensions)))
     (list (/ (first window-dimensions) (window-width))
           (/ (second window-dimensions) (window-height)))))
 
@@ -175,46 +159,31 @@
       (list (string-to-int (match-string 1 command-result))
             (string-to-int (match-string 2 command-result))))))
 
-(defun* mvi-center-insert-image
-    (image
-     &optional
-     (margin-in-chars 1)
-     use-cache)
+(defun* mvi-center-insert-image (image &optional (margin-in-chars 1))
   (setq image (expand-file-name image))
   (assert (file-exists-p image))
   (let* (( char-dim (mvi-character-dimensions))
-         ( win-dim (mvi-writable-window-dimensions))
+         ( win-dim (mvi-main-area-dimensions))
          ( max-dim
            (mapcar* (lambda (win char) (- win (* 2 margin-in-chars char)))
                     win-dim
                     char-dim))
          ( image-fitted
-           (funcall (if use-cache
-                        'mvi-fit-image-caching
-                        'mvi-fit-image)
-                    image
-                    (first max-dim)
-                    (second max-dim)))
+           (mvi-fit-image image (first max-dim) (second max-dim)))
          ( image-fitted-dim (mvi-image-dimensions image-fitted))
          ( pixel-margins
            (mapcar* (lambda (win image) (/ (- win image) 2))
                     win-dim
                     image-fitted-dim))
          ( char-margins
-           (mapcar*
-            (lambda (char mar) (/ mar char))
-            char-dim
-            pixel-margins)))
+           (mapcar* (lambda (char mar) (/ mar char))
+                    char-dim
+                    pixel-margins)))
     (erase-buffer)
     (insert (make-string (second char-margins) ?\n))
     (insert (make-string (first char-margins) ?\s))
     (insert-image-file image-fitted)
     (goto-char (point-min))))
-
-(defun* mvi-buffer-has-window-p (buf)
-  (some (lambda (win)
-          (eq (window-buffer win) buf))
-        (mvi-full-window-list)))
 
 (defun mvi-refresh-all ()
   (let (( mvi-buffers
@@ -224,7 +193,7 @@
     (mapc 'mview-image-refresh mvi-buffers)))
 
 (defun* mvi-window-configuration-change-hook (&rest ignore)
-  (when (some 'mvi-window-p (window-list))
+  (when (some 'mvi-mvi-window-p (window-list))
     (when (timerp mvi-resize-timer)
       (cancel-timer mvi-resize-timer))
     (setq mvi-resize-timer
@@ -237,6 +206,7 @@
   (let (( inhibit-read-only t))
     (mvi-with-window-or-buffer window-or-buffer
       (setq mvi-current-image-file image)
+      (setq mvi-last-window-dimensions (mvi-main-area-dimensions))
       (setq default-directory (file-name-directory image))
       (mvi-center-insert-image image 1))))
 
@@ -250,14 +220,7 @@
   (mvi-with-window-or-buffer window-or-buffer
     (when (and (stringp mvi-current-image-file)
                (file-exists-p mvi-current-image-file))
-      (mview-image-set-image
-       mvi-current-image-file
-       window-or-buffer))))
-
-(defun mview-image-refresh-hard (&optional window-or-buffer)
-  (interactive)
-  (mvi-clear-cache)
-  (mview-image-refresh window-or-buffer))
+      (mview-image-set-image mvi-current-image-file window-or-buffer))))
 
 (define-derived-mode mview-image-mode fundamental-mode
   "MView Image Mode"
@@ -274,18 +237,21 @@ Requires ImageMagick."
         (lambda (&rest ignore)
           (mview-image-refresh)))
   (mvi-define-keys mview-image-mode-map
-    (kbd "<down-mouse-1>") 'ignore
-    (kbd "<drag-mouse-1>") 'ignore
-    [remap mmouse-scroll-up] 'ignore
-    [remap mmouse-scroll-down] 'ignore
-    [remap mwheel-scroll] 'ignore
     [remap smooth-scroll-up] 'ignore
     [remap smooth-scroll-down] 'ignore
     [remap cua-scroll-up] 'ignore
     [remap cua-scroll-down] 'ignore
     [remap scroll-up-command] 'ignore
     [remap scroll-down-command] 'ignore
-    ;; Ideally you'd never need to use this.
+    (kbd "<down-mouse-1>") 'ignore
+    (kbd "<drag-mouse-1>") 'ignore
+    (kbd "<mouse-5>") 'ignore
+    (kbd "<mouse-4>") 'ignore
+    (kbd "<next>") 'ignore
+    (kbd "<prior>") 'ignore
+    (kbd "<vertical-scroll-bar>") 'ignore
+    (kbd "C-v") 'ignore
+    (kbd "M-v") 'ignore
     (kbd "g") 'revert-buffer)
   (setq cursor-type nil
         buffer-read-only t
@@ -296,6 +262,13 @@ Requires ImageMagick."
   "Pop to a new buffer showing the image at FILENAME."
   (interactive (list (read-file-name "Open image: ")))
   (pop-to-buffer (generate-new-buffer "MView Image"))
+  (mview-image-mode)
+  (mview-image-set-image filename))
+
+(defun mview-image-switch-to-image (filename)
+  "Pop to a new buffer showing the image at FILENAME."
+  (interactive (list (read-file-name "Open image: ")))
+  (switch-to-buffer (generate-new-buffer "MView Image"))
   (mview-image-mode)
   (mview-image-set-image filename))
 
