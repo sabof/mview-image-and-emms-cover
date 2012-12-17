@@ -29,9 +29,7 @@
 
 (eval-when-compile (require 'cl))
 
-;; -----------------------------------------------------------------------------
 ;; GLOBAL VARS
-;; -----------------------------------------------------------------------------
 
 (defvar mvi-fit-image-caching-hash
   (make-hash-table
@@ -52,9 +50,7 @@
 (defvar mvi-buffer-tmp-file nil)
 (make-variable-buffer-local 'mvi-buffer-tmp-file)
 
-;; -----------------------------------------------------------------------------
 ;; MACROS
-;; -----------------------------------------------------------------------------
 
 (defmacro mvi-with-window-or-buffer (window-or-buffer &rest rest)
   (let (( win-sym (gensym "win-"))
@@ -82,9 +78,7 @@
   `(flet ((message (&rest ignore)))
      ,@body))
 
-;; -----------------------------------------------------------------------------
 ;; FUNCTIONS
-;; -----------------------------------------------------------------------------
 
 (defun* mvi-buffer-p (&optional (buf (current-buffer)))
   ;; Maybe check active keymaps instead?
@@ -236,9 +230,7 @@
     (setq mvi-resize-timer
           (run-with-timer 1 nil 'mvi-refresh-all))))
 
-;; -----------------------------------------------------------------------------
 ;; INTERFACE
-;; -----------------------------------------------------------------------------
 
 (defun* mview-image-set-image (image &optional window-or-buffer)
   (assert (file-exists-p image))
@@ -282,14 +274,17 @@ Requires ImageMagick."
         (lambda (&rest ignore)
           (mview-image-refresh)))
   (mvi-define-keys mview-image-mode-map
-    [remap mmouse-scroll-up] 'ignore
     (kbd "<down-mouse-1>") 'ignore
     (kbd "<drag-mouse-1>") 'ignore
+    [remap mmouse-scroll-up] 'ignore
     [remap mmouse-scroll-down] 'ignore
+    [remap mwheel-scroll] 'ignore
     [remap smooth-scroll-up] 'ignore
     [remap smooth-scroll-down] 'ignore
     [remap cua-scroll-up] 'ignore
     [remap cua-scroll-down] 'ignore
+    [remap scroll-up-command] 'ignore
+    [remap scroll-down-command] 'ignore
     ;; Ideally you'd never need to use this.
     (kbd "g") 'revert-buffer)
   (setq cursor-type nil
