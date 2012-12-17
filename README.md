@@ -16,15 +16,13 @@ in your .emacs, and do `M-x emms-cover-show`.
 
 <h4>MView Image</h4>
 
-Currently provides a single interactive command `mview-image-pop-to-image`,
-which asks for a file name and opens it in a MView Image buffer.
+Currently provides 2 interactive commands `mview-image-pop-to-image`, and `mview-image-switch-to-image`.
+which ask for a file name and open it in a MView Image buffer.
 
-<h3>Possible improvements (That I'm currently too lazy to implement, but you might not be)</h3>
+<h3>Possible improvements:</h3>
 <h4>MView Image</h4>
 
-* Improve the caching mechanism. Now it's in a rather lame, slightly better than
-nothing state.
-* Add a buffer-local switch to turn caching on and off.
+* Could be optimized in several places.
 
 <h4>EMMS Cover</h4>
 
