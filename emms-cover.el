@@ -27,7 +27,7 @@
 
 ;;; Code:
 
-(eval-when-compile (require 'cl))
+(require 'cl)
 (require 'mview-image)
 
 (defvar emms-cover-nocover-image nil)
@@ -80,7 +80,7 @@ mview-image."
   (setq revert-buffer-function 'emms-cover-refresh))
 
 (defun emms-cover-pop-to ()
-  "Show the emms-cover buffer."
+  "Pop to the emms-cover buffer."
   (interactive)
   (pop-to-buffer "*EMMS Cover*")
   (emms-cover-mode)
@@ -89,7 +89,7 @@ mview-image."
 (defalias 'emms-cover-show 'emms-cover-pop-to)
 
 (defun emms-cover-switch-to ()
-  "Show the emms-cover buffer."
+  "Switch to the emms-cover buffer."
   (interactive)
   (switch-to-buffer "*EMMS Cover*")
   (emms-cover-mode)

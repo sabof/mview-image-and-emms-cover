@@ -27,7 +27,7 @@
 
 ;;; Code:
 
-(eval-when-compile (require 'cl))
+(require 'cl)
 
 ;; GLOBAL VARS
 
@@ -266,7 +266,7 @@ Requires ImageMagick."
   (mview-image-set-image filename))
 
 (defun mview-image-switch-to-image (filename)
-  "Pop to a new buffer showing the image at FILENAME."
+  "Switch to a new buffer showing the image at FILENAME."
   (interactive (list (read-file-name "Open image: ")))
   (switch-to-buffer (generate-new-buffer "MView Image"))
   (mview-image-mode)
