@@ -62,7 +62,8 @@
                      (window-buffer ,window-or-buffer))
                    ( (bufferp ,window-or-buffer)
                      ,window-or-buffer)
-                   ( t (current-buffer)))))
+                   ( t (current-buffer))))
+           ( inhibit-read-only t))
        (when (and (windowp ,win-sym)
                   (bufferp ,buf-sym)
                   (mvi-mvi-buffer-p ,buf-sym))
@@ -203,18 +204,44 @@
 
 (defun* mview-image-set-image (image &optional window-or-buffer)
   (assert (file-exists-p image))
-  (let (( inhibit-read-only t))
-    (mvi-with-window-or-buffer window-or-buffer
-      (setq mvi-current-image-file image)
-      (setq mvi-last-window-dimensions (mvi-main-area-dimensions))
-      (setq default-directory (file-name-directory image))
-      (mvi-center-insert-image image 1))))
+  (mvi-with-window-or-buffer window-or-buffer
+    (setq mvi-current-image-file image)
+    (setq default-directory (file-name-directory image))
+    (mvi-center-insert-image image 1)))
+
+(defun mvi-save-data-to-temp (string-or-buffer)
+  (let (( temp-file-name (make-temp-file "emacs-image"))
+        buffer)
+    (cond ( (bufferp string-or-buffer)
+            (setq buffer string-or-buffer))
+          ( (stringp string-or-buffer)
+            (setq buffer (generate-new-buffer " mview-image-temp"))
+            (with-current-buffer buffer
+              (insert string-or-buffer))))
+    (with-current-buffer buffer
+      (write-region nil nil temp-file-name))
+    temp-file-name))
+
+(defun mvi-get-url (url)
+  (with-current-buffer (url-retrieve-synchronously url)
+    (goto-char (point-min))
+    (search-forward "\n\n")
+    (delete-region (point-min) (point))
+    (current-buffer)))
+
+(defun* mview-image-set-image-from-data (string-or-buffer &optional window-or-buffer)
+  (mview-image-set-image (mvi-save-data-to-temp  string-or-buffer)
+                         window-or-buffer))
+
+(defun* mview-image-set-image-from-url (url &optional window-or-buffer)
+  (let ((url-buffer (mvi-get-url url)))
+    (mview-image-set-image-from-data  url-buffer  window-or-buffer)
+    (kill-buffer url-buffer)))
 
 (defun* mview-image-clear (&optional window-or-buffer)
   (mvi-with-window-or-buffer window-or-buffer
-    (let (( inhibit-read-only t))
-      (erase-buffer)
-      (setq mvi-current-image-file nil))))
+    (erase-buffer)
+    (setq mvi-current-image-file nil)))
 
 (defun mview-image-refresh (&optional window-or-buffer)
   (mvi-with-window-or-buffer window-or-buffer
@@ -258,16 +285,22 @@ Requires ImageMagick."
         mvi-is-mvi-buffer t
         indicate-empty-lines nil))
 
+(defun mview-image-switch-to-url (url)
+  (interactive (list (read-file-name "View url: ")))
+  (switch-to-buffer (generate-new-buffer "MView Image"))
+  (mview-image-mode)
+  (mview-image-set-image-from-url url))
+
 (defun mview-image-pop-to-image (filename)
   "Pop to a new buffer showing the image at FILENAME."
-  (interactive (list (read-file-name "Open image: ")))
+  (interactive (list (read-file-name "View image: ")))
   (pop-to-buffer (generate-new-buffer "MView Image"))
   (mview-image-mode)
   (mview-image-set-image filename))
 
 (defun mview-image-switch-to-image (filename)
   "Switch to a new buffer showing the image at FILENAME."
-  (interactive (list (read-file-name "Open image: ")))
+  (interactive (list (read-file-name "View image: ")))
   (switch-to-buffer (generate-new-buffer "MView Image"))
   (mview-image-mode)
   (mview-image-set-image filename))
