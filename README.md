@@ -4,9 +4,9 @@
 
 Emms Cover shows the cover of the currently playing album in EMMS.
 
-MView Image is a simplistic image viewer, based on ImageMagick that shows an
+MView Image is a simple image viewer, based on ImageMagick that shows an
 image scaled to fit and centered. It will adjust if the window is resized. EMMS
-Cover is derived from this mode. It is mostly of interest to elisp programmers.
+Cover is derived from this mode. It can open images from urls.
 
 <h3>Installation and usage</h3>
 <h4>EMMS Cover</h4>
@@ -16,8 +16,7 @@ in your .emacs, and do `M-x emms-cover-show`.
 
 <h4>MView Image</h4>
 
-Currently provides 2 interactive commands `mview-image-pop-to-image`, and `mview-image-switch-to-image`.
-which ask for a file name and open it in a MView Image buffer.
+Two good examples are `view-image-switch-to-image` and `mview-image-switch-to-url`.
 
 <h3>Possible improvements:</h3>
 <h4>MView Image</h4>
