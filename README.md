@@ -12,11 +12,11 @@ Cover is derived from this mode. It can open images from urls.
 <h4>EMMS Cover</h4>
 
 Put both files somewhere in your load-path, add `(require 'emms-cover)` somewhere
-in your .emacs, and do `M-x emms-cover-show`.
+in your .emacs, and do `M-x emms-cover-switch-to`.
 
 <h4>MView Image</h4>
 
-Two good examples are `view-image-switch-to-image` and `mview-image-switch-to-url`.
+Two good usage examples are `view-image-switch-to-image` and `mview-image-switch-to-url`.
 
 <h3>Possible improvements:</h3>
 <h4>MView Image</h4>
