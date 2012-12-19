@@ -6,7 +6,7 @@
 ;; This file is NOT part of GNU Emacs.
 ;;
 ;; This program is free software; you can redistribute it and/or
-;; modify it under the terms of the GNU General Public License as
+;; modify it r the terms of the GNU General Public License as
 ;; published by the Free Software Foundation; either version 3, or (at
 ;; your option) any later version.
 ;;
@@ -31,6 +31,7 @@
 (require 'mview-image)
 
 (defvar emms-cover-nocover-image nil)
+(defvar emms-cover-stopped-image nil)
 
 (defun emms-cover-buffers-with-mode (mode)
   (remove-if-not
@@ -40,8 +41,6 @@
    (buffer-list)))
 
 (defun* emms-cover-path ()
-  (unless emms-player-playing-p
-    (return-from emms-cover-path))
   (let* (( track (emms-playlist-current-selected-track))
          ( track-name (cdr (assq 'name (rest track))))
          ( folder (file-name-directory track-name)))
@@ -63,10 +62,9 @@
            (or (first (emms-cover-buffers-with-mode 'emms-cover-mode))
                (return-from emms-cover-refresh)))
          ( cover-path
-           (or (emms-cover-path)
-               (progn
-                 (mview-image-clear cover-buffer)
-                 (return-from emms-cover-refresh)))))
+           (cond ( (not emms-player-playing-p)
+                   emms-cover-stopped-image)
+                 ( t (emms-cover-path)))))
     (mview-image-set-image cover-path cover-buffer)))
 
 (define-derived-mode emms-cover-mode mview-image-mode

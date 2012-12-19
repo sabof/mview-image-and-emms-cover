@@ -1,4 +1,4 @@
-;;; mview-image.el --- Fit and center an image in an emacs buffer. Responsive to window resizing. Requires ImageMagick.
+;;; mview-image.el --- Fit and center an image in an emacs buffer. Responsive to window resizing. Requires ImageMagick.  -*- lexical-binding: t -*-
 ;;; Version: 0.1
 ;;; Author: sabof
 ;;; URL: https://github.com/sabof/mview-image-and-emms-cover
@@ -46,6 +46,12 @@
 (defvar mvi-buffer-tmp-file nil)
 (make-variable-buffer-local 'mvi-buffer-tmp-file)
 
+(defvar mvi-buffer-lock nil)
+(make-variable-buffer-local 'mvi-buffer-lock)
+
+(defvar mvi-buffer-queue nil)
+(make-variable-buffer-local 'mvi-buffer-queue)
+
 ;; MACROS
 
 (defmacro mvi-with-window-or-buffer (window-or-buffer &rest rest)
@@ -76,6 +82,13 @@
 (defmacro mvi-silence-messages (&rest body)
   `(flet ((message (&rest ignore)))
      ,@body))
+
+
+(defmacro mvi-back-pop (symbol)
+  (let ( (result (gensym)))
+    `(let ( (,result (first (last ,symbol))))
+       (setq ,symbol (butlast ,symbol))
+       ,result)))
 
 ;; FUNCTIONS
 
@@ -120,17 +133,28 @@
                    (if mode-line-format 1 0)))
              margin))))
 
-(defun* mvi-fit-image (image-loc width height)
+(defun* mvi-fit-image-async (image-loc width height callback)
   (assert (file-exists-p image-loc))
-  (let* (( file (or mvi-buffer-tmp-file
-                    (setq mvi-buffer-tmp-file
-                          (make-temp-file "mvi-image" nil ".png"))))
-         ( command
-           (format "convert %s -resize %sx%s\\> %s"
-                   (shell-quote-argument image-loc)
-                   width height file)))
-    (mvi-silence-messages (shell-command command))
-    file))
+  (let* (( new-file (or mvi-buffer-tmp-file
+                        (setq mvi-buffer-tmp-file
+                              (make-temp-file "mvi-image" nil ".png"))))
+         ( args (list image-loc "-resize" (format "%sx%s>" width height)))
+         ( ---
+           ;; Emacs can get bitchy with transparent PNGs. There is a possibility
+           ;; emacs colors won't always being understood by ImageMagick
+           (progn
+            (when (stringp (face-attribute 'default :background))
+              (setq args (append
+                          args (list "-compose" "over" "-background"
+                                     (face-attribute 'default :background)
+                                     "-flatten"))))
+            (setq args (append args (list new-file)))))
+         ( process
+           (apply 'start-process "convert" "*Messages*" "convert"
+                  args)))
+    (set-process-sentinel
+     process (lambda (&rest ignore)
+               (funcall callback new-file)))))
 
 (defun mvi-buffers ()
   (remove-if-not 'mvi-mvi-buffer-p (buffer-list)))
@@ -145,48 +169,23 @@
     (list (/ (first window-dimensions) (window-width))
           (/ (second window-dimensions) (window-height)))))
 
-(defun mvi-image-dimensions (source)
+(defun mvi-image-dimensions-async (source callback)
   (assert (file-exists-p source))
   (setq source (expand-file-name source))
-  (let* (( command (concat "identify " (shell-quote-argument source)))
-         ( command-result1
-           (mvi-silence-messages
-            (shell-command-to-string command)))
-         ( command-result2
-           (substring command-result1
-                      (length source))))
-    ;; (message "%s" command-result1)
-    (save-match-data
-      (string-match "\\([0-9]+\\)x\\([0-9]+\\)" command-result2)
-      (list (string-to-int (match-string 1 command-result2))
-            (string-to-int (match-string 2 command-result2))))))
-
-(defun* mvi-center-insert-image (image &optional (margin-in-chars 1))
-  (assert (file-exists-p image))
-  (setq image (expand-file-name image))
-  (let* (( char-dim (mvi-character-dimensions))
-         ( win-dim (mvi-main-area-dimensions))
-         ( max-dim
-           (mapcar* (lambda (win char) (- win (* 2 margin-in-chars char)))
-                    win-dim
-                    char-dim))
-         ( image-fitted
-           (mvi-fit-image image (first max-dim) (second max-dim)))
-         ( image-fitted-dim (mvi-image-dimensions image-fitted))
-         ( pixel-margins
-           (mapcar* (lambda (win image) (/ (- win image) 2))
-                    win-dim
-                    image-fitted-dim))
-         ( char-margins
-           (mapcar* (lambda (char mar) (/ mar char))
-                    char-dim
-                    pixel-margins)))
-    (erase-buffer)
-    (insert (make-string (second char-margins) ?\n))
-    (insert (make-string (first char-margins) ?\s))
-    (insert-image-file image-fitted)
-    (delete-file image-fitted)
-    (goto-char (point-min))))
+  (let* (( process
+           (start-process "identify" "*Messages*" "identify" source))
+         ( result-string ""))
+    (set-process-filter
+     process (lambda (process output)
+               (setq result-string
+                     (concat result-string output))))
+    (set-process-sentinel
+     process (lambda (&rest ignore)
+               (setq result-string
+                     (replace-regexp-in-string "^[^ ] " "" result-string))
+               (string-match "\\([0-9]+\\)x\\([0-9]+\\)" result-string)
+               (funcall callback (list (string-to-int (match-string 1 result-string))
+                                       (string-to-int (match-string 2 result-string))))))))
 
 (defun mvi-refresh-all ()
   (let (( mvi-buffers
@@ -194,6 +193,38 @@
            'mvi-buffer-has-window-p
            (mvi-buffers))))
     (mapc 'mview-image-refresh mvi-buffers)))
+
+(defun* mvi-center-insert-image-async (image &optional (margin-in-chars 1) callback)
+  (assert (file-exists-p image))
+  (setq image (expand-file-name image))
+  (let* (( buffer (current-buffer))
+         ( char-dim (mvi-character-dimensions))
+         ( win-dim (mvi-main-area-dimensions))
+         ( max-dim
+           (mapcar* (lambda (win char) (- win (* 2 margin-in-chars char)))
+                    win-dim
+                    char-dim)))
+    (mvi-fit-image-async
+     image (first max-dim) (second max-dim)
+     (lambda (file)
+       (mvi-image-dimensions-async
+        file (lambda (image-fitted-dim)
+               (let* (( pixel-margins
+                        (mapcar* (lambda (win image) (/ (- win image) 2))
+                                 win-dim
+                                 image-fitted-dim))
+                      ( char-margins
+                        (mapcar* (lambda (char mar) (/ mar char))
+                                 char-dim
+                                 pixel-margins)))
+                 (mvi-with-window-or-buffer buffer
+                   (erase-buffer)
+                   (insert (make-string (second char-margins) ?\n))
+                   (insert (make-string (first char-margins) ?\s))
+                   (insert-image-file file)
+                   ;; (delete-file file)
+                   (goto-char (point-min))
+                   (funcall callback)))))))))
 
 (defun* mvi-window-configuration-change-hook (&rest ignore)
   (when (some 'mvi-mvi-window-p (window-list))
@@ -227,11 +258,29 @@
 ;; INTERFACE
 
 (defun* mview-image-set-image (image &optional window-or-buffer)
-  (assert (file-exists-p image))
+  "Set the image of WINDOW-OR-BUFFER. Clear it if the IMAGE is nil."
+  (assert (or (null image) (file-exists-p image)))
   (mvi-with-window-or-buffer window-or-buffer
+    (when mvi-buffer-lock
+      (push image mvi-buffer-queue)
+      (return-from mview-image-set-image))
+    (setq mvi-buffer-lock t)
+    (when (null image)
+      (mview-image-clear window-or-buffer)
+      (setq mvi-buffer-lock nil)
+      (when mvi-buffer-queue
+        (mview-image-set-image
+         (mvi-back-pop mvi-buffer-queue)))
+      (return-from mview-image-set-image))
     (setq mvi-current-image-file image)
     (setq default-directory (file-name-directory image))
-    (mvi-center-insert-image image 1)))
+    (mvi-center-insert-image-async
+     image 1 (lambda ()
+               (mvi-with-window-or-buffer window-or-buffer
+                 (setq mvi-buffer-lock nil)
+                 (when mvi-buffer-queue
+                   (mview-image-set-image
+                    (mvi-back-pop mvi-buffer-queue))))))))
 
 (defun* mview-image-set-image-from-data (string-or-buffer &optional window-or-buffer)
   (let ((temp (mvi-save-data-to-temp  string-or-buffer)))
