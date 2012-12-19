@@ -141,14 +141,15 @@
          ( args (list image-loc "-resize" (format "%sx%s>" width height)))
          ( ---
            ;; Emacs can get bitchy with transparent PNGs. There is a possibility
-           ;; emacs colors won't always being understood by ImageMagick
+           ;; Emacs colors won't always being understood by ImageMagick. There
+           ;; might also be some method to convert any Emacs color to hex.
            (progn
-            (when (stringp (face-attribute 'default :background))
-              (setq args (append
-                          args (list "-compose" "over" "-background"
-                                     (face-attribute 'default :background)
-                                     "-flatten"))))
-            (setq args (append args (list new-file)))))
+             (when (stringp (face-attribute 'default :background))
+               (setq args (append
+                           args (list "-compose" "over" "-background"
+                                      (face-attribute 'default :background)
+                                      "-flatten"))))
+             (setq args (append args (list new-file)))))
          ( process
            (apply 'start-process "convert" "*Messages*" "convert"
                   args)))
@@ -262,15 +263,21 @@
   (assert (or (null image) (file-exists-p image)))
   (mvi-with-window-or-buffer window-or-buffer
     (when mvi-buffer-lock
+      (when mvi-buffer-queue
+        (setq mvi-buffer-queue
+              (remove image mvi-buffer-queue)))
       (push image mvi-buffer-queue)
       (return-from mview-image-set-image))
     (setq mvi-buffer-lock t)
     (when (null image)
-      (mview-image-clear window-or-buffer)
-      (setq mvi-buffer-lock nil)
-      (when mvi-buffer-queue
-        (mview-image-set-image
-         (mvi-back-pop mvi-buffer-queue)))
+      (progn ; Erase
+        (erase-buffer)
+        (setq mvi-current-image-file nil))
+      (progn ; Handle queue
+        (setq mvi-buffer-lock nil)
+        (when mvi-buffer-queue
+          (mview-image-set-image
+           (mvi-back-pop mvi-buffer-queue))))
       (return-from mview-image-set-image))
     (setq mvi-current-image-file image)
     (setq default-directory (file-name-directory image))
@@ -292,10 +299,8 @@
     (mview-image-set-image-from-data  url-buffer  window-or-buffer)
     (kill-buffer url-buffer)))
 
-(defun* mview-image-clear (&optional window-or-buffer)
-  (mvi-with-window-or-buffer window-or-buffer
-    (erase-buffer)
-    (setq mvi-current-image-file nil)))
+(defun mview-image-clear (&optional window-or-buffer)
+  (mview-image-set-image nil window-or-buffer))
 
 (defun mview-image-refresh (&optional window-or-buffer)
   (mvi-with-window-or-buffer window-or-buffer
