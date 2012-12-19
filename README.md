@@ -6,7 +6,7 @@ Emms Cover shows the cover of the currently playing album in EMMS.
 
 MView Image is a simple image viewer, based on ImageMagick that shows an
 image scaled to fit and centered. It will adjust if the window is resized. EMMS
-Cover is derived from this mode. It can open images from urls.
+Cover is derived from this mode. It can open images from URLs.
 
 <h3>Installation and usage</h3>
 <h4>EMMS Cover</h4>

@@ -122,17 +122,14 @@
 
 (defun* mvi-fit-image (image-loc width height)
   (assert (file-exists-p image-loc))
-  (let* (( file
-           (or mvi-buffer-tmp-file
-               (setq mvi-buffer-tmp-file
-                     (make-temp-file "emacs-image" nil ".png"))))
-         ( command (format "convert %s -resize %sx%s\\> %s"
-                           (shell-quote-argument image-loc)
-                           width
-                           height
-                           file)))
-    (mvi-silence-messages
-     (shell-command command))
+  (let* (( file (or mvi-buffer-tmp-file
+                    (setq mvi-buffer-tmp-file
+                          (make-temp-file "mvi-image" nil ".png"))))
+         ( command
+           (format "convert %s -resize %sx%s\\> %s"
+                   (shell-quote-argument image-loc)
+                   width height file)))
+    (mvi-silence-messages (shell-command command))
     file))
 
 (defun mvi-buffers ()
@@ -148,21 +145,25 @@
     (list (/ (first window-dimensions) (window-width))
           (/ (second window-dimensions) (window-height)))))
 
-(defun mvi-image-dimensions (source &optional dont-recurse)
+(defun mvi-image-dimensions (source)
   (assert (file-exists-p source))
+  (setq source (expand-file-name source))
   (let* (( command (concat "identify " (shell-quote-argument source)))
-         ( command-result
-           (substring (mvi-silence-messages
-                       (shell-command-to-string command))
+         ( command-result1
+           (mvi-silence-messages
+            (shell-command-to-string command)))
+         ( command-result2
+           (substring command-result1
                       (length source))))
+    ;; (message "%s" command-result1)
     (save-match-data
-      (string-match "\\([0-9]+\\)x\\([0-9]+\\)" command-result)
-      (list (string-to-int (match-string 1 command-result))
-            (string-to-int (match-string 2 command-result))))))
+      (string-match "\\([0-9]+\\)x\\([0-9]+\\)" command-result2)
+      (list (string-to-int (match-string 1 command-result2))
+            (string-to-int (match-string 2 command-result2))))))
 
 (defun* mvi-center-insert-image (image &optional (margin-in-chars 1))
-  (setq image (expand-file-name image))
   (assert (file-exists-p image))
+  (setq image (expand-file-name image))
   (let* (( char-dim (mvi-character-dimensions))
          ( win-dim (mvi-main-area-dimensions))
          ( max-dim
@@ -184,6 +185,7 @@
     (insert (make-string (second char-margins) ?\n))
     (insert (make-string (first char-margins) ?\s))
     (insert-image-file image-fitted)
+    (delete-file image-fitted)
     (goto-char (point-min))))
 
 (defun mvi-refresh-all ()
@@ -200,17 +202,8 @@
     (setq mvi-resize-timer
           (run-with-timer 1 nil 'mvi-refresh-all))))
 
-;; INTERFACE
-
-(defun* mview-image-set-image (image &optional window-or-buffer)
-  (assert (file-exists-p image))
-  (mvi-with-window-or-buffer window-or-buffer
-    (setq mvi-current-image-file image)
-    (setq default-directory (file-name-directory image))
-    (mvi-center-insert-image image 1)))
-
 (defun mvi-save-data-to-temp (string-or-buffer)
-  (let (( temp-file-name (make-temp-file "emacs-image"))
+  (let (( temp-file-name (make-temp-file "mvi-image-data"))
         buffer)
     (cond ( (bufferp string-or-buffer)
             (setq buffer string-or-buffer))
@@ -220,6 +213,8 @@
               (insert string-or-buffer))))
     (with-current-buffer buffer
       (write-region nil nil temp-file-name))
+    (when (stringp string-or-buffer)
+      (kill-buffer buffer))
     temp-file-name))
 
 (defun mvi-get-url (url)
@@ -229,9 +224,19 @@
     (delete-region (point-min) (point))
     (current-buffer)))
 
+;; INTERFACE
+
+(defun* mview-image-set-image (image &optional window-or-buffer)
+  (assert (file-exists-p image))
+  (mvi-with-window-or-buffer window-or-buffer
+    (setq mvi-current-image-file image)
+    (setq default-directory (file-name-directory image))
+    (mvi-center-insert-image image 1)))
+
 (defun* mview-image-set-image-from-data (string-or-buffer &optional window-or-buffer)
-  (mview-image-set-image (mvi-save-data-to-temp  string-or-buffer)
-                         window-or-buffer))
+  (let ((temp (mvi-save-data-to-temp  string-or-buffer)))
+    (mview-image-set-image temp window-or-buffer)
+    (delete-file temp)))
 
 (defun* mview-image-set-image-from-url (url &optional window-or-buffer)
   (let ((url-buffer (mvi-get-url url)))
@@ -286,6 +291,7 @@ Requires ImageMagick."
         indicate-empty-lines nil))
 
 (defun mview-image-switch-to-url (url)
+  "Pop to a new buffer showing the image from URL"
   (interactive (list (read-file-name "View url: ")))
   (switch-to-buffer (generate-new-buffer "MView Image"))
   (mview-image-mode)
