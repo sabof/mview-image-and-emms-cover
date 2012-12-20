@@ -29,30 +29,16 @@
 
 (require 'cl)
 
-;; GLOBAL VARS
-
-(defvar mvi-current-image-file nil)
-(make-variable-buffer-local 'mvi-current-image-file)
-
-(defvar mvi-resize-timer nil)
-(make-variable-buffer-local 'mvi-resize-timer)
-
-(defvar mvi-is-mvi-buffer nil)
-(make-variable-buffer-local 'mvi-is-mvi-buffer)
-
-(defvar mvi-last-image nil)
-(make-variable-buffer-local 'mvi-last-image)
-
-(defvar mvi-buffer-tmp-file nil)
-(make-variable-buffer-local 'mvi-buffer-tmp-file)
-
-(defvar mvi-buffer-lock nil)
-(make-variable-buffer-local 'mvi-buffer-lock)
-
-(defvar mvi-buffer-queue nil)
-(make-variable-buffer-local 'mvi-buffer-queue)
-
 ;; MACROS
+
+(defmacro mvi-define-buffer-local-vars (&rest list)
+  (let (result)
+    (while list
+      (let ((name (pop list))
+            (value (pop list)))
+        (push `(defvar ,name ,value) result)
+        (push `(make-variable-buffer-local (quote ,name)) result)))
+    (cons 'progn (nreverse result))))
 
 (defmacro mvi-with-window-or-buffer (window-or-buffer &rest rest)
   (let (( win-sym (gensym "win-"))
@@ -90,6 +76,20 @@
        (setq ,symbol (butlast ,symbol))
        ,result)))
 
+;; GLOBAL VARS
+
+(defvar mvi-margin-size 1)
+
+(mvi-define-buffer-local-vars
+ mvi-current-image-file nil
+ mvi-resize-timer nil
+ mvi-is-mvi-buffer nil
+ mvi-last-image nil
+ mvi-buffer-tmp-file nil
+ mvi-buffer-lock nil
+ mvi-buffer-queue nil
+ )
+
 ;; FUNCTIONS
 
 (defun* mvi-mvi-buffer-p (&optional (buf (current-buffer)))
@@ -123,15 +123,15 @@
         (mvi-full-window-list)))
 
 (defun mvi-main-area-dimensions ()
-  (let (( margin 2)
+  (let (( safety-margin 2)
         ( char-dim (mvi-character-dimensions)))
     (list (- (* (first char-dim) (window-width))
-             margin)
+             safety-margin)
           (- (* (second char-dim)
                 (- (window-height)
                    (if header-line-format 1 0)
                    (if mode-line-format 1 0)))
-             margin))))
+             safety-margin))))
 
 (defun* mvi-fit-image-async (image-loc width height callback)
   (assert (file-exists-p image-loc))
@@ -282,12 +282,14 @@
     (setq mvi-current-image-file image)
     (setq default-directory (file-name-directory image))
     (mvi-center-insert-image-async
-     image 1 (lambda ()
-               (mvi-with-window-or-buffer window-or-buffer
-                 (setq mvi-buffer-lock nil)
-                 (when mvi-buffer-queue
-                   (mview-image-set-image
-                    (mvi-back-pop mvi-buffer-queue))))))))
+     image
+     mvi-margin-size
+     (lambda ()
+       (mvi-with-window-or-buffer window-or-buffer
+         (setq mvi-buffer-lock nil)
+         (when mvi-buffer-queue
+           (mview-image-set-image
+            (mvi-back-pop mvi-buffer-queue))))))))
 
 (defun* mview-image-set-image-from-data (string-or-buffer &optional window-or-buffer)
   (let ((temp (mvi-save-data-to-temp  string-or-buffer)))
@@ -344,12 +346,13 @@ Requires ImageMagick."
         mvi-is-mvi-buffer t
         indicate-empty-lines nil))
 
-(defun mview-image-switch-to-url (url)
-  "Pop to a new buffer showing the image from URL"
-  (interactive (list (read-file-name "View url: ")))
-  (switch-to-buffer (generate-new-buffer "MView Image"))
-  (mview-image-mode)
-  (mview-image-set-image-from-url url))
+(let (url-history)
+  (defun mview-image-switch-to-url (url)
+    "Pop to a new buffer showing the image from URL"
+    (interactive (list (read-string "View url: " nil 'url-history)))
+    (switch-to-buffer (generate-new-buffer "MView Image"))
+    (mview-image-mode)
+    (mview-image-set-image-from-url url)))
 
 (defun mview-image-pop-to-image (filename)
   "Pop to a new buffer showing the image at FILENAME."
