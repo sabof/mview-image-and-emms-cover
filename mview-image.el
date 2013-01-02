@@ -344,7 +344,8 @@ Requires ImageMagick."
   (setq cursor-type nil
         buffer-read-only t
         mvi-is-mvi-buffer t
-        indicate-empty-lines nil))
+        indicate-empty-lines nil)
+  (buffer-disable-undo))
 
 (let (url-history)
   (defun mview-image-switch-to-url (url)

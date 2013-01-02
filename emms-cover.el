@@ -1,4 +1,4 @@
-;;; emms-cover.el --- Dispay the cover of the currently playing album in EMMS. Based on mview-image.
+;;; emms-cover.el --- Dispay the cover of the currently playing album in EMMS. Based on mview-image.  -*- lexical-binding: t -*-
 ;;; Version: 0.1
 ;;; Author: sabof
 ;;; URL: https://github.com/sabof/mview-image-and-emms-cover
@@ -40,22 +40,41 @@
        (eq major-mode mode)))
    (buffer-list)))
 
+(defun* emms-cover-make-paused-image (source callback)
+  (setq source (expand-file-name source))
+  (let* (( dest (make-temp-file "emms-cover-paused" nil ".png"))
+         ( args (list "composite" "-blend" "50" source "xc:black" "-alpha" "Set" dest))
+         ( args (list "convert" source "-modulate" "50,0" dest))
+         ;; ( process (apply 'start-process "composite" "*Messages*" "composite" args))
+         )
+    (shell-command-to-string
+     (mapconcat
+      'shell-quote-argument
+      args
+      " "))
+    dest
+    ;; (set-process-sentinel process (lambda (&rest ignore)
+    ;;                                 (funcall callback dest)))
+    ))
+
 (defun* emms-cover-path ()
   (let* (( track (emms-playlist-current-selected-track))
          ( track-name (cdr (assq 'name (rest track))))
-         ( folder (file-name-directory track-name)))
-    (expand-file-name
-     (or (first (directory-files
-                 folder t "folder\\..\\{2,4\\}$"))
-         (first (directory-files
-                 folder t
-                 (mapconcat
-                  'identity
-                  (mapcar
-                   'extension-to-regex
-                   image-extensions)
-                  "\\|")))
-         emms-cover-nocover-image))))
+         ( folder (file-name-directory track-name))
+         ( file-name
+           (expand-file-name
+            (or (first (directory-files
+                        folder t "folder\\..\\{2,4\\}$"))
+                (first (directory-files
+                        folder t
+                        (mapconcat
+                         'identity
+                         (mapcar
+                          'extension-to-regex
+                          image-extensions)
+                         "\\|")))
+                emms-cover-nocover-image))))
+    file-name))
 
 (defun* emms-cover-refresh (&rest ignore)
   (let* (( cover-buffer
@@ -64,6 +83,10 @@
          ( cover-path
            (cond ( (not emms-player-playing-p)
                    emms-cover-stopped-image)
+                 ( emms-player-paused-p
+                   (emms-cover-make-paused-image
+                    (emms-cover-path)
+                    nil))
                  ( t (emms-cover-path)))))
     (mview-image-set-image cover-path cover-buffer)))
 
