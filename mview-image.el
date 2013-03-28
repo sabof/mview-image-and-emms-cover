@@ -160,13 +160,13 @@
 (defun mvi-buffers ()
   (remove-if-not 'mvi-mvi-buffer-p (buffer-list)))
 
-(defun mvi-mvi-window-pixel-dimensions ()
-  (let ((pixel-edges (window-pixel-edges)))
+(defun mvi-window-pixel-dimensions ()
+  (let (( pixel-edges (window-pixel-edges)))
     (list (- (third pixel-edges) (first pixel-edges))
           (- (fourth pixel-edges) (second pixel-edges)))))
 
 (defun mvi-character-dimensions ()
-  (let (( window-dimensions (mvi-mvi-window-pixel-dimensions)))
+  (let (( window-dimensions (mvi-window-pixel-dimensions)))
     (list (/ (first window-dimensions) (window-width))
           (/ (second window-dimensions) (window-height)))))
 
